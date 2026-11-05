@@ -1,0 +1,14 @@
+name: snap-action
+version: 0.1.0
+description: >-
+  Screenshot-to-action — send any screenshot (booking, bill, subscription email,
+  payment confirmation, ticket, chat) and get numbered smart actions in chat.
+  Persistent ledger via plugin_db; reminders wired through Hermes cron.
+author: nishant
+provides_tools:
+  - snap_save
+  - snap_list
+  - snap_get
+  - snap_update
+  - snap_stats
+  - snap_delete
