@@ -25,14 +25,12 @@ An image (screenshot or photo) arrives in chat with no explicit instruction, OR 
    - other: summary
    **Never invent values.** If a required field is not visible, ask one short question before saving.
 4. **Call `snap_save`** with kind + fields. It returns an item id, a one-line summary, and numbered suggested actions.
-5. **Reply compactly** — emoji header, one-line summary, then numbered actions (from suggested_actions labels). No long prose. Example:
+5. **Reply compactly** — emoji header + one-line summary, then **immediately call `clarify`** with the suggested action labels as `choices` (question: "What should I do with this?"). This renders as native tappable buttons on Telegram/desktop; on text-only platforms it degrades to a numbered list automatically. Keep your text reply to the summary line — don't duplicate the options as text, the buttons carry them. Example:
 
    ✈️ IndiGo 6E-523 · BOM → DEL · Nov 14, 07:40 · PNR ABC12
-   1️⃣ Remind me the day before
-   2️⃣ Web check-in reminder (24h before)
-   3️⃣ Just save it
+   → clarify(choices=["Remind me the day before", "Web check-in reminder (24h before)", "Just save it"])
 
-6. **Execute the chosen action** when the user replies with a number (or several):
+6. **Execute the chosen action** from the clarify answer (a tapped button or a typed reply — treat both identically):
    - Reminder actions → create a one-shot cron reminder (deliver to origin chat) using the dates/refs in the item; state the exact time you set.
    - Split bill → ask who's splitting (or read names from the screenshot), equal amounts unless stated, then `snap_update` with `fields.splits=[{name, amount, paid:false}]`; show the split table.
    - Settle → `snap_update` with `settle=<name>`; show remaining open splits.
