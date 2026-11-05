@@ -21,7 +21,11 @@ user taps  ──▶ agent executes (cron reminder / snap_update / nothing)
 - The plugin owns **memory** (the ledger); the agent owns **actions**
   (reminders go through Hermes cron, so they fire on any platform).
 - Vision is Hermes' built-in image handling — the plugin ships no OCR, no
-  models, no API calls.
+  models, no API calls. The session's main model reads the image natively;
+  a non-vision main model falls back to the configured `auxiliary.vision`
+  backend (`agent.image_input_mode: auto` → "text" mode). If neither exists,
+  the workflow's no-vision guard tells the user how to fix their setup rather
+  than guessing.
 - **Data-driven kinds** (`kinds.py`): a new use case is one dict entry —
   `label`, `emoji`, required/optional fields, summary template, fixed action
   list. No code changes anywhere else.

@@ -27,7 +27,7 @@ KINDS = {
         "actions": [
             {"label": "Log as expense", "hint": "Confirm expense entry is stored (item already saved); reply with running month total if a budget ledger exists."},
             {"label": "Split this bill", "hint": "Ask who is splitting (or read names from the screenshot), then call snap_update with splits=[{{name, amount, paid:false}}] (equal split unless amounts given)."},
-            {"label": "Remind me before due date", "hint": "Only if due_date present. One-shot cron reminder 2 days before {due_date}."},
+            {"label": "Remind me before due date", "hint": "If fields.due_date is missing, reply that there's no due date on this bill (skip). Otherwise create a one-shot cron reminder 2 days before the due date."},
         ],
     },
     "subscription": {

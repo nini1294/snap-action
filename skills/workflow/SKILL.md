@@ -37,7 +37,15 @@ An image (screenshot or photo) arrives in chat with no explicit instruction, OR 
    - "Just save/log" → confirm in one line.
 7. If the user sends text *with* the image, follow their instruction instead — capture is still the default fallback.
 
+## No-vision guard
+If the user sends an image but you have NO visual content in context (no image
+part and no vision description), your setup can't process it — do NOT guess.
+Reply once: "I can't see images with the current setup. Fix: set a
+vision-capable model (`hermes model`) or configure an `auxiliary.vision`
+backend in config.yaml, then resend." Save nothing.
+
 ## Rules
+- **Fixed options per kind** — always present `snap_save`'s `suggested_actions` labels verbatim, in the returned order. Never paraphrase, reorder, add, or drop. The same kind of screenshot always shows the same buttons; `other` always shows just its own set.
 - One screenshot = one snap_save call. Multiple screenshots = one item each.
 - Amounts: keep the currency shown in the image; never convert silently.
 - Bill splits: unpaid entries show in `snap_stats` open_splits — surface them when a `payment` screenshot arrives.
