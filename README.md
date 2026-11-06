@@ -42,7 +42,7 @@ Your agent's built-in vision reads the screenshot; this plugin supplies the **me
 - **Data-driven kind registry** (`kinds.py`) — a new use case is one dict entry, no code changes
 - **SQLite ledger** via Hermes `plugin_db()` — survives plugin updates and removals (`~/.hermes/plugin-data/snap-action/`)
 - **Bundled workflow skill** — teaches any Hermes session the classify → extract → save → offer-actions → execute loop
-- **`/snap` command** — list the ledger; `/snap stats` shows open bill splits and upcoming renewals
+- **`/snaps` command** — list the ledger; `/snaps stats` shows open bill splits and upcoming renewals
 
 Reminder actions are executed through Hermes cron, so they work on any platform your gateway runs on (Telegram, Discord, Slack, WhatsApp, …).
 

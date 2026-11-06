@@ -75,6 +75,13 @@ updates/removals):
 Bill splits settle via `snap_update(settle="name")`; open splits surface in
 `snap_stats` and a later `payment` screenshot offers to settle them.
 
+## Calendar support
+
+Travel and event kinds expose an "Add to calendar" action that produces two
+things with no API keys or OAuth:
+1. an **.ics file** sent as a chat attachment (Apple/Outlook/anything),
+2. a **Google Calendar one-tap link** (`calendar.google.com/calendar/render?action=TEMPLATE&...`).
+
 ## Kinds (v1)
 
 travel · bill · subscription · payment · event · task · warranty · delivery · other

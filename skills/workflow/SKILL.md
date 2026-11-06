@@ -49,6 +49,6 @@ backend in config.yaml, then resend." Save nothing.
 - One screenshot = one snap_save call. Multiple screenshots = one item each.
 - Amounts: keep the currency shown in the image; never convert silently.
 - Bill splits: unpaid entries show in `snap_stats` open_splits — surface them when a `payment` screenshot arrives.
-- `/snap` shows the ledger; `/snap stats` shows splits + renewals.
+- `/snaps` shows the ledger; `/snaps stats` shows splits + renewals.
 - Times are the user's local timezone (IST default) — confirm ambiguous dates ("3/11" → ask DD/MM vs MM/DD only if genuinely unclear from context).
 - Keep every reply under ~60 words; the value is speed.

@@ -179,8 +179,9 @@ def stats() -> dict:
         by_kind[kind] = by_kind.get(kind, 0) + 1
         for s in f.get("splits") or []:
             if not s.get("paid"):
-                open_splits.append({"id": None, "name": s.get("name"),
-                                    "amount": s.get("amount")})
+                open_splits.append({"name": s.get("name"),
+                                    "amount": s.get("amount"),
+                                    "currency": f.get("currency")})
         if kind == "subscription" and f.get("next_renewal"):
             renewals.append({"service": f.get("service"), "amount": f.get("amount"),
                              "currency": f.get("currency"), "next_renewal": f["next_renewal"]})
