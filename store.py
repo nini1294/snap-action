@@ -7,6 +7,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from .kinds import KINDS, SPLIT_STATUSES
+from .timing import actions_for
 
 PLUGIN_NAME = "snap-action"
 
@@ -111,15 +112,19 @@ def save(kind: str, fields: dict, note: str | None, image_path: str | None = Non
                 db.execute("UPDATE items SET fields=? WHERE id=?",
                            (json.dumps(fields, ensure_ascii=False), item_id))
     placeholder = {f: "" for f in spec["fields"] + spec.get("optional", [])}
+    if kind == "event" and "time" in placeholder:
+        placeholder["time"] = "all-day"  # used only when the field is absent
     try:
         summary = spec["summary"].format(**{**placeholder, **fields})
     except Exception:
         summary = str(fields)
-    actions = [
-        {"n": i + 1, "label": a["label"],
-         "hint": (a["hint"].format(**{**placeholder, **fields}) if fields else a["hint"])}
-        for i, a in enumerate(spec["actions"])
-    ]
+    actions = []
+    for i, a in enumerate(actions_for(kind, fields)):
+        try:
+            hint = a["hint"].format(**{**placeholder, **fields})
+        except Exception:
+            hint = a["hint"]  # crash-proof: never fail a save over a bad template
+        actions.append({"n": i + 1, "label": a["label"], "hint": hint})
     return {"ok": True, "id": item_id, "kind": kind, "label": spec["label"],
             "emoji": spec["emoji"], "summary": summary, "suggested_actions": actions}
 

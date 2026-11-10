@@ -42,7 +42,9 @@ When the user asks to recall / reopen an item — by id, by description ("the
 Jaipur flight"), or via the literal message "/snaps recall N" (the gateway
 forwards that command text to you):
 1. `snap_get` the item. If its fields contain `_image`, resend that file as an
-   attachment (e.g. MEDIA: <path>) so the user sees the original screenshot.
+   attachment (e.g. MEDIA: <path>) **as a standalone message** — never in the
+   same message as the buttons/clarify, or Telegram drops it. Wait for it to
+   send, then continue.
 2. Print the same compact summary (emoji + one line).
 3. Offer actions again via `clarify`: the kind's fixed action labels plus
    **Delete** as the last choice. Execute the pick as usual (steps 6–7); for
@@ -57,7 +59,7 @@ vision-capable model (`hermes model`) or configure an `auxiliary.vision`
 backend in config.yaml, then resend." Save nothing.
 
 ## Rules
-- **Fixed options per kind** — always present `snap_save`'s `suggested_actions` labels verbatim, in the returned order. Never paraphrase, reorder, add, or drop. The same kind of screenshot always shows the same buttons; `other` always shows just its own set.
+- **Fixed options per kind** — always present `snap_save`'s `suggested_actions` labels verbatim, in the returned order. Never paraphrase, reorder, add, or drop. The same kind of screenshot always shows the same buttons; `other` always shows just its own set. Labels are deterministic per kind *and timing bucket*: an event starting within 12h offers "Remind me 1 hour before" instead of morning/evening-before reminders; a past event offers only "Just save it".
 - One screenshot = one snap_save call. Multiple screenshots = one item each.
 - Amounts: keep the currency shown in the image; never convert silently.
 - Bill splits: unpaid entries show in `snap_stats` open_splits — surface them when a `payment` screenshot arrives.
