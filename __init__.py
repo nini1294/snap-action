@@ -36,7 +36,7 @@ def snap_save(args: dict, **kwargs) -> str:
         fields = args.get("fields") or {}
         if not isinstance(fields, dict):
             return _j({"ok": False, "error": "fields must be an object"})
-        return _j(store.save(kind, fields, args.get("note")))
+        return _j(store.save(kind, fields, args.get("note"), args.get("image_path")))
     except Exception as e:  # never raise
         logger.exception("snap_save failed")
         return _j({"ok": False, "error": f"snap_save failed: {e}"})
@@ -147,6 +147,17 @@ def _snap_command(raw_args: str, **kwargs):
                 lines.append("🗂 Active: " + ", ".join(f"{k} ×{v}" for k, v in sorted(by_kind.items())))
             return "\n".join(lines)
 
+        if arg.startswith("recall "):
+            item_id = _int({"id": arg.split()[1]})
+            if item_id is None:
+                return "❌ usage: /snaps recall <number>"
+            # '@@agent:' sentinel (core patch): gateway forwards this to the agent turn,
+            # which runs the rich recall — stored image, summary, buttons (actions + Delete).
+            return ("@@agent:The user typed /snaps recall " + str(item_id) + ". "
+                    "Run the snap-action rich recall flow for item " + str(item_id) + ": "
+                    "snap_get it, resend the stored image (fields._image) if present, "
+                    "show the one-line summary, then offer its kind's actions plus Delete via clarify.")
+
         if arg.startswith("id "):
             item_id = _int({"id": arg.split()[1]})
             if item_id is None:
@@ -159,17 +170,30 @@ def _snap_command(raw_args: str, **kwargs):
             lines = [_fmt_item(it), "```json\n" + _json.dumps(it["fields"], ensure_ascii=False, indent=1)[:1200] + "```"]
             return "\n".join(lines)
 
-        kind = arg if arg else None
-        r = store.list_items(kind=kind)
+        if arg.startswith("kind "):
+            kind = arg.split()[1].strip()
+            r = store.list_items(kind=kind)
+            if not r.get("ok"):
+                return f"❌ {r.get('error')}"
+            if not r["items"]:
+                return f"📒 No active {kind} items."
+            lines = [f"📒 {kind} — {r['count']} active", ""]
+            lines += [_fmt_item(it) for it in r["items"]]
+            return "\n".join(lines)
+
+        if arg:
+            return ("usage: /snaps [stats | kind <name> | id <n> | recall <n>]\n"
+                    f"kinds: bill, delivery, event, other, payment, subscription, task, travel, warranty")
+
+        r = store.list_items()
         if not r.get("ok"):
             return f"❌ {r.get('error')}"
         if not r["items"]:
             return "📒 Ledger is empty — send a screenshot to capture something."
-        scope = f" ({arg})" if arg else ""
-        lines = [f"📒 snap ledger{scope} — {r['count']} active", ""]
+        lines = [f"📒 snap ledger — {r['count']} active", ""]
         lines += [_fmt_item(it) for it in r["items"]]
         lines.append("")
-        lines.append("📊 /snaps stats · /snaps <kind> · /snaps id <n>")
+        lines.append("📊 /snaps stats · /snaps kind <name> · /snaps id <n> · /snaps recall <n>")
         return "\n".join(lines)
     except Exception as e:
         return f"snaps command failed: {e}"
@@ -200,4 +224,4 @@ def register(ctx):
         ctx.register_skill(name="workflow", path=skill_path,
                            description="Screenshot-to-action workflow: classify an incoming image, extract fields, save, and offer numbered quick actions")
 
-    logger.info("snap-action registered: 6 tools, /snap command, workflow skill")
+    logger.info("snap-action registered: 6 tools, /snaps command, workflow skill")

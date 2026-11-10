@@ -24,7 +24,7 @@ An image (screenshot or photo) arrives in chat with no explicit instruction, OR 
    - delivery: courier, tracking_id, expected_date (+item)
    - other: summary
    **Never invent values.** If a required field is not visible, ask one short question before saving.
-4. **Call `snap_save`** with kind + fields. It returns an item id, a one-line summary, and numbered suggested actions.
+4. **Call `snap_save`** with kind + fields, and pass `image_path` — the file path of the screenshot you're reading — so the plugin keeps a durable copy for recall. It returns an item id, a one-line summary, and the kind's fixed suggested actions.
 5. **Reply compactly** — emoji header + one-line summary, then **immediately call `clarify`** with the suggested action labels as `choices` (question: "What should I do with this?"). This renders as native tappable buttons on Telegram/desktop; on text-only platforms it degrades to a numbered list automatically. Keep your text reply to the summary line — don't duplicate the options as text, the buttons carry them. Example:
 
    ✈️ IndiGo 6E-523 · BOM → DEL · Nov 14, 07:40 · PNR ABC12
@@ -36,6 +36,18 @@ An image (screenshot or photo) arrives in chat with no explicit instruction, OR 
    - Settle → `snap_update` with `settle=<name>`; show remaining open splits.
    - "Just save/log" → confirm in one line.
 7. If the user sends text *with* the image, follow their instruction instead — capture is still the default fallback.
+
+## Recall
+When the user asks to recall / reopen an item — by id, by description ("the
+Jaipur flight"), or via the literal message "/snaps recall N" (the gateway
+forwards that command text to you):
+1. `snap_get` the item. If its fields contain `_image`, resend that file as an
+   attachment (e.g. MEDIA: <path>) so the user sees the original screenshot.
+2. Print the same compact summary (emoji + one line).
+3. Offer actions again via `clarify`: the kind's fixed action labels plus
+   **Delete** as the last choice. Execute the pick as usual (steps 6–7); for
+   Delete, call `snap_delete` and confirm in one line. If `_image` is absent
+   (captured before image storage), say so and continue from the summary.
 
 ## No-vision guard
 If the user sends an image but you have NO visual content in context (no image

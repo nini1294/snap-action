@@ -67,7 +67,29 @@ def validate_kind(kind: str):
     return None
 
 
-def save(kind: str, fields: dict, note: str | None) -> dict:
+def _images_dir() -> str:
+    import os
+    path = os.path.expanduser(f"~/.hermes/plugin-data/{PLUGIN_NAME}/images")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _store_image(item_id: int, src: str) -> str | None:
+    """Copy the source screenshot into plugin-data so recalls outlive cache pruning."""
+    try:
+        import os, shutil
+        src = os.path.expanduser(str(src))
+        if not os.path.isfile(src):
+            return None
+        ext = os.path.splitext(src)[1].lower() or ".jpg"
+        dst = os.path.join(_images_dir(), f"{item_id}{ext}")
+        shutil.copyfile(src, dst)
+        return dst
+    except Exception:
+        return None
+
+
+def save(kind: str, fields: dict, note: str | None, image_path: str | None = None) -> dict:
     _ensure()
     spec = KINDS[kind]
     missing = [f for f in spec["fields"] if not fields.get(f)]
@@ -80,7 +102,14 @@ def save(kind: str, fields: dict, note: str | None) -> dict:
             "INSERT INTO items (kind, fields, note, created_at, updated_at) VALUES (?,?,?,?,?)",
             (kind, json.dumps(fields, ensure_ascii=False), note, now, now),
         )
-        item_id = cur.lastrowid
+        item_id = int(cur.lastrowid or 0)
+    if image_path:
+        stored = _store_image(item_id, image_path)
+        if stored:
+            fields["_image"] = stored
+            with db:
+                db.execute("UPDATE items SET fields=? WHERE id=?",
+                           (json.dumps(fields, ensure_ascii=False), item_id))
     placeholder = {f: "" for f in spec["fields"] + spec.get("optional", [])}
     try:
         summary = spec["summary"].format(**{**placeholder, **fields})
@@ -156,6 +185,15 @@ def update(item_id: int, fields: dict | None = None, status: str | None = None,
 
 def delete(item_id: int) -> dict:
     _ensure()
+    row = _db().execute("SELECT fields FROM items WHERE id=?", (item_id,)).fetchone()
+    if row:
+        img = (json.loads(row[0] or "{}")).get("_image")
+        if img:
+            import os
+            try:
+                os.remove(os.path.expanduser(img))
+            except OSError:
+                pass
     db = _db()
     with db:
         cur = db.execute("DELETE FROM items WHERE id=?", (item_id,))

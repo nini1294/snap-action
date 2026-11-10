@@ -11,6 +11,9 @@ SAVE = {
                    "Dates as YYYY-MM-DD. For bills may include "
                    "splits=[{name, amount, paid}] after the user confirms."},
         "note": {"type": "string", "description": "Optional free-text context"},
+        "image_path": {"type": "string", "description":
+                       "Path of the screenshot this item was captured from. "
+                       "The plugin keeps a durable copy so it can be recalled later."},
     },
     "required": ["kind", "fields"],
 }
