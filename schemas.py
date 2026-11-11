@@ -28,6 +28,14 @@ LIST = {
     },
 }
 
+KEYBOARD = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "integer", "description": "Item id to show the action keyboard for"},
+    },
+    "required": ["id"],
+}
+
 GET = {
     "type": "object",
     "properties": {"id": {"type": "integer"}},

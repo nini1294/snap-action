@@ -63,7 +63,7 @@ KINDS = {
             {"label": "Add to calendar (.ics + Google link)",
              "hint": "Build a calendar entry: title {title}, start {date} at {time}, location {venue}, details include ref and prep notes if present. Send (1) an .ics file for it as an attachment, and (2) a Google Calendar one-tap link: https://calendar.google.com/calendar/render?action=TEMPLATE with text, dates in YYYYMMDDTHMMSS/YYYYMMDDTHMMSS format, details and location params filled from the same values."},
             {"label": "Remind me that morning", "hint": "One-shot cron reminder the morning of {date} with venue, time and ref."},
-            {"label": "Prep reminder the evening before", "hint": "One-shot cron reminder the evening before {date}."},
+            {"label": "Remind me the evening before", "hint": "One-shot cron reminder the evening before {date}."},
         ],
     },
     "task": {

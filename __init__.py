@@ -158,7 +158,8 @@ def _snap_command(raw_args: str, **kwargs):
                     and getattr(src, "chat_id", None):
                 try:
                     from . import fastpath
-                    return fastpath.fastpath_sync_recall(int(item_id), str(src.chat_id))
+                    reply = fastpath.fastpath_sync_recall(int(item_id), str(src.chat_id))
+                    return reply if reply else "✓"  # gateway treats empty as unhandled
                 except Exception as e:
                     return f"❌ recall failed: {e}"
             # Fallback (CLI/desktop or no chat): '@@agent:' sentinel — gateway forwards
@@ -209,6 +210,22 @@ def _snap_command(raw_args: str, **kwargs):
         return f"snaps command failed: {e}"
 
 
+def snap_keyboard(args: dict, **kwargs) -> str:
+    """Send an item's action keyboard code-side (used after auto-capture saves)."""
+    item_id = _int(args)
+    if item_id is None:
+        return "❌ snap_keyboard requires id"
+    src = kwargs.get("source")
+    chat_id = getattr(src, "chat_id", None) if src is not None else None
+    if not chat_id:
+        return "❌ snap_keyboard needs a Telegram chat (no chat in this session)"
+    try:
+        from . import fastpath
+        return fastpath.fastpath_sync_recall(int(item_id), str(chat_id))
+    except Exception as e:
+        return f"❌ snap_keyboard failed: {e}"
+
+
 def register(ctx):
     ctx.register_tool(name="snap_save", toolset="snap", schema=schemas.SAVE,
                       handler=snap_save, description="Save a screenshot-derived item (booking, bill, subscription, payment, event, task, warranty, delivery) and get suggested quick actions")
@@ -229,16 +246,19 @@ def register(ctx):
                          description="snap-action ledger: /snaps [stats | kind | id N | recall N]",
                          args_hint="[stats|kind|id N|recall N]")
     try:
-        from .fastpath import handle_callback
-        reg = ctx.register_callback_handler("snap", handle_callback)
-        if reg is None:
-            reg = None  # registration failed; recall falls back to the agent flow
+        from .fastpath import handle_callback, handle_new_callback, handle_photo
+        ctx.register_callback_handler("snap", handle_callback)
+        ctx.register_callback_handler("snapnew", handle_new_callback)
+        ctx.register_photo_hook(handle_photo)
     except Exception:
-        pass
+        logger.warning("snap-action: fastpath registration failed", exc_info=True)
+
+    ctx.register_tool(name="snap_keyboard", toolset="snap", schema=schemas.KEYBOARD,
+                      handler=snap_keyboard, description="Send an item's tappable action keyboard (photo + buttons) to the chat, code-side with no LLM flow. Call right after snap_save in auto-capture turns")
 
     skill_path = Path(__file__).parent / "skills" / "workflow" / "SKILL.md"
     if skill_path.exists():
         ctx.register_skill(name="workflow", path=skill_path,
                            description="Screenshot-to-action workflow: classify an incoming image, extract fields, save, and offer numbered quick actions")
 
-    logger.info("snap-action registered: 6 tools, /snaps command, snap: callbacks, workflow skill")
+    logger.info("snap-action registered: 7 tools, /snaps command, snap:/snapnew: callbacks, photo hook, workflow skill")

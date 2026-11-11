@@ -20,7 +20,9 @@ from . import store
 from .timing import actions_for
 
 AUTH_TTL = timedelta(hours=24)
+SAVE_TTL = timedelta(hours=1)
 _sent_auth: dict[int, tuple[str, datetime]] = {}  # item_id -> (chat_id, sent_at)
+_pending_saves: dict[str, tuple[str, str, "object", datetime]] = {}  # snapnew:<n> -> (chat_id, path, submit-callback, ts)
 
 
 # ---------------------------------------------------------------- Bot API
@@ -115,7 +117,7 @@ async def send_recall(item_id: int, chat_id: str) -> str:
             "reply_markup": json.dumps(keyboard)})
     if not resp.get("ok"):
         return f"❌ send failed: {resp.get('description', 'unknown')}"
-    return "✓ Recall sent"
+    return ""  # the photo+keyboard IS the reply — no confirmation text needed
 
 
 def fastpath_sync_recall(item_id: int, chat_id: str) -> str:
@@ -261,8 +263,76 @@ def _calendar_payload(kind: str, fields: dict) -> tuple[str, str, str] | None:
     return ics, link, title
 
 
+# ---------------------------------------------------------------- auto-capture
+
+async def handle_photo(event, source, image_paths, submit) -> None:
+    """Gateway photo hook: offer a code-side 'Save to snaps?' keyboard for bare images.
+    Zero LLM — the classification turn only runs if the user taps Save."""
+    if len(image_paths) != 1:
+        return  # multi-image dumps: skip, the user is probably just sharing
+    chat_id = getattr(source, "chat_id", None)
+    if not chat_id:
+        return
+    n = uuid.uuid4().hex[:8]
+    now = datetime.now()
+    _pending_saves[f"snapnew:{n}"] = (str(chat_id), image_paths[0], submit, now)
+    for k in [k for k, (_, _, _, t) in _pending_saves.items() if now - t > SAVE_TTL]:
+        _pending_saves.pop(k, None)
+    keyboard = {"inline_keyboard": [[
+        {"text": "💾 Save to snaps", "callback_data": f"snapnew:{n}:1"},
+        {"text": "Ignore", "callback_data": f"snapnew:{n}:0"},
+    ]]}
+    try:
+        await _api_async("sendMessage", {"chat_id": chat_id,
+                                         "text": "Save this screenshot to snaps?",
+                                         "reply_markup": json.dumps(keyboard)})
+    except Exception:
+        _pending_saves.pop(f"snapnew:{n}", None)
+
+
+async def handle_new_callback(query, data: str, chat_id: str | None) -> None:
+    """Tap on a 'Save to snaps?' offer keyboard."""
+    try:
+        await query.answer()
+        parts = data.split(":")
+        if len(parts) != 3 or not chat_id:
+            return
+        key, save = ":".join(parts[:2]), parts[2] == "1"
+        entry = _pending_saves.pop(key, None)
+        if not entry or entry[0] != chat_id or datetime.now() - entry[3] > SAVE_TTL:
+            try:
+                await query.edit_message_text("⌛ This offer expired — send the screenshot again.")
+            except Exception:
+                pass
+            return
+        if not save:
+            try:
+                await query.edit_message_text("👍 Ignored — nothing saved.")
+            except Exception:
+                pass
+            return
+        path, submit = entry[1], entry[2]
+        prompt = ("The user tapped 💾 Save on a screenshot auto-capture offer — the original "
+                  "image is attached. Run the snap-action workflow on it: classify the kind, "
+                  "extract the fields, snap_save it with image_path set, then call snap_keyboard "
+                  "with the new item id so the action buttons appear. Keep your final reply to "
+                  "one short line confirming what was saved.")
+        try:
+            submit(prompt, [path])
+        except Exception as e:
+            await _api_async("sendMessage", {"chat_id": chat_id,
+                                             "text": f"❌ Could not start the save flow: {e}"})
+    except Exception:
+        try:
+            await query.answer(text="Something went wrong.", show_alert=True)
+        except Exception:
+            pass
+
+
 async def handle_callback(query, data: str, chat_id: str | None) -> None:
     """Button tap on a snap recall keyboard: execute the action in code."""
+    logger = __import__("logging").getLogger("hermes_plugins.snap_action")
+    logger.info("snap callback: %s chat=%s", data, chat_id)
     try:
         answer = getattr(query, "answer")
         try:
@@ -348,7 +418,9 @@ async def handle_callback(query, data: str, chat_id: str | None) -> None:
                 return cronjob(action="create", name=f"snap-{item_id}-{uuid.uuid4().hex[:6]}",
                                prompt=prompt, schedule=when, deliver=f"telegram:{chat_id}")
             res = await asyncio.to_thread(_create)
-            ok = not str(res).lower().startswith("error")
+            logger.info("snap %s reminder cron result: %s", item_id, str(res)[:120])
+            ok = "success" in str(res) and "false" not in str(res)[:200].lower() \
+                and not str(res).lower().startswith("error")
             await _edit(query, (f"⏰ Reminder set for {fire.strftime('%b %d, %H:%M IST')} "
                                 f"(snap {item_id})." if ok else f"❌ Reminder failed: {res}"))
             return
@@ -357,6 +429,7 @@ async def handle_callback(query, data: str, chat_id: str | None) -> None:
             return
         await _toast_edit(query, f"“{label}” needs the agent — just say it in chat.")
     except Exception:
+        logger.exception("snap callback %s failed", data)
         try:
             await query.answer(text="Something went wrong.", show_alert=True)
         except Exception:

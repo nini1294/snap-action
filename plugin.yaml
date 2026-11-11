@@ -12,3 +12,4 @@ provides_tools:
   - snap_update
   - snap_stats
   - snap_delete
+  - snap_keyboard

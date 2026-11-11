@@ -65,6 +65,7 @@ vision-capable model (`hermes model`) or configure an `auxiliary.vision`
 backend in config.yaml, then resend." Save nothing.
 
 ## Rules
+- **Auto-capture:** a bare screenshot (no caption) first gets a code-side offer keyboard (Save/Ignore); only a Save tap starts the classification turn. In that turn: classify, `snap_save` with `image_path`, then call `snap_keyboard` with the new id so the buttons appear, and keep your reply to one short line. Description questions about a photo never trigger a save.
 - **Fixed options per kind** — always present `snap_save`'s `suggested_actions` labels verbatim, in the returned order. Never paraphrase, reorder, add, or drop. The same kind of screenshot always shows the same buttons; `other` always shows just its own set. Labels are deterministic per kind *and timing bucket*: an event starting within 12h offers "Remind me 1 hour before" instead of morning/evening-before reminders; a past event offers only "Just save it".
 - One screenshot = one snap_save call. Multiple screenshots = one item each.
 - Amounts: keep the currency shown in the image; never convert silently.
