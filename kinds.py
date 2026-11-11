@@ -13,7 +13,7 @@ KINDS = {
         "optional": ["seat", "pax", "hotel", "checkout"],
         "summary": "{carrier} {ref}: {from} \u2192 {to}, {date} {time}",
         "actions": [
-            {"label": "Add to calendar (.ics + Google link)",
+            {"label": "Add to calendar",
              "hint": "Build a calendar entry: title 'Flight {carrier} {ref}: {from} to {to}', start {date} {time}, end at the arrival time if present else start plus 2h, details include ref {ref} and pax, location {from}. Send (1) an .ics file for it as an attachment, and (2) a Google Calendar one-tap link: https://calendar.google.com/calendar/render?action=TEMPLATE with text, dates in YYYYMMDDTHMMSS/YYYYMMDDTHMMSS UTC-offset-free format, details and location params filled from the same values."},
             {"label": "Web check-in reminder (24h before)", "hint": "Flights only. One-shot cron reminder 24h before departure: web check-in opens, ref {ref}."},
             {"label": "Just save it", "hint": "No further action; item is already stored."},
@@ -60,7 +60,7 @@ KINDS = {
         "optional": ["time", "venue", "ref", "prep"],
         "summary": "{title} \u2014 {date} {time} @ {venue}",
         "actions": [
-            {"label": "Add to calendar (.ics + Google link)",
+            {"label": "Add to calendar",
              "hint": "Build a calendar entry: title {title}, start {date} at {time}, location {venue}, details include ref and prep notes if present. Send (1) an .ics file for it as an attachment, and (2) a Google Calendar one-tap link: https://calendar.google.com/calendar/render?action=TEMPLATE with text, dates in YYYYMMDDTHMMSS/YYYYMMDDTHMMSS format, details and location params filled from the same values."},
             {"label": "Remind me that morning", "hint": "One-shot cron reminder the morning of {date} with venue, time and ref."},
             {"label": "Remind me the evening before", "hint": "One-shot cron reminder the evening before {date}."},

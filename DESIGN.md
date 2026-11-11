@@ -94,6 +94,24 @@ The agent flow remains the fallback for description-based recalls and
 non-Telegram surfaces. All stored times are IST; timing.py compares in IST even
 when the host clock is UTC.
 
+## Future work (researched from docs, 2026-11-11)
+Sequenced roadmap — nothing implemented yet:
+1. ctx.llm classification in the photo hook — one structured LLM call in-plugin
+   (host credentials, images supported) instead of spawning an agent turn; agent
+   stays out unless the user asks a question.
+2. dashboard/plugin_api.py (FastAPI, mounted at /api/plugins/snap-action, reads
+   data.db) + desktop/plugin.js page — unified package, shared backend, ledger
+   GUI for desktop + web dashboard (tabs/slots: cron:top, analytics:bottom).
+3. config_schema (reminder hour, default currency, lead times) + requires_env
+   (TELEGRAM_BOT_TOKEN) in plugin.yaml.
+4. Gateway startup event hook (~/.hermes/hooks/) to auto-run reload-plugins,
+   killing the boot-ordering workaround.
+5. Upstream issues: callback-fallback routing and photo-hook seams don't exist
+   officially — docs invite requests for missing public hooks.
+Also available: Telegram rich messages (Bot API 10.1 native tables/details/
+task-lists) for recall+stats output; web_app inline button → VPS-hosted
+mini-app ledger; deep-link t.me/<bot>?start=snap_<id> on reminder messages.
+
 ## Calendar support
 
 Travel and event kinds expose an "Add to calendar" action that produces two

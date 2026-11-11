@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from .kinds import KINDS, SPLIT_STATUSES
 from .timing import actions_for
@@ -38,6 +38,44 @@ def _init() -> None:
                 updated_at TEXT NOT NULL
             )"""
         )
+        db.execute(
+            """CREATE TABLE IF NOT EXISTS keyboards (
+                item_id INTEGER PRIMARY KEY,
+                chat_id TEXT NOT NULL,
+                sent_at TEXT NOT NULL
+            )"""
+        )
+
+
+def kb_register(item_id: int, chat_id: str) -> None:
+    """Record that a live action keyboard was sent for this item."""
+    _ensure()
+    with _db() as db:
+        db.execute(
+            "INSERT OR REPLACE INTO keyboards (item_id, chat_id, sent_at) VALUES (?, ?, ?)",
+            (item_id, chat_id, _now()),
+        )
+
+
+def kb_check(item_id: int, chat_id: str, ttl_hours: float = 24.0) -> bool:
+    """True if a keyboard for item_id was sent to chat_id within the TTL."""
+    _ensure()
+    row = _db().execute(
+        "SELECT chat_id, sent_at FROM keyboards WHERE item_id=?", (item_id,)
+    ).fetchone()
+    if not row or row[0] != chat_id:
+        return False
+    try:
+        sent = datetime.fromisoformat(row[1])
+    except ValueError:
+        return False
+    return (datetime.now(timezone.utc) - sent) <= timedelta(hours=ttl_hours)
+
+
+def kb_drop(item_id: int) -> None:
+    _ensure()
+    with _db() as db:
+        db.execute("DELETE FROM keyboards WHERE item_id=?", (item_id,))
 
 
 def _now() -> str:

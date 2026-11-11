@@ -75,11 +75,37 @@ async def _api_async(method: str, fields: dict, file_field: str | None = None,
 # ---------------------------------------------------------------- keyboard
 
 def _buttons(item_id: int, kind: str, fields: dict) -> list[list[dict]]:
+    kind_short = {
+        "calendar": "📅 Add to calendar", "check-in": "⏰ Check-in reminder",
+        "expense": "💰 Log expense", "split": "👥 Split bill",
+        "settled": "✅ Settle split", "track": "📌 Track",
+        "note": "📝 Save as note",
+        "delivery": "📦 Delivery reminder", "follow": "📦 Follow up",
+        "warranty": "🛡 Warranty reminder", "hour": "⏰ Remind 1h before",
+        "morning": "🌅 Remind that morning", "evening": "🌙 Evening before",
+        "renewal": "🔄 Renewal reminder", "due": "⏰ Remind before due",
+        "30 days": "🛡 Remind 30d before", "save it": "Save only",
+        "remind": "⏰ Remind",  # generic fallback — keep AFTER the specific ones
+    }
+
+    def _short(label: str) -> str:
+        low = label.lower()
+        for key, short in kind_short.items():
+            if key in low:
+                return short
+        return label
     rows: list[list[dict]] = []
     row: list[dict] = []
     labels = [a["label"] for a in actions_for(kind, fields)] + ["Delete"]
     for i, label in enumerate(labels):
-        row.append({"text": label, "callback_data": f"snap:{item_id}:{i}"})
+        text = _short(label)
+        low = label.lower()
+        if any(w in low for w in ("remind", "check-in")):
+            fire = _fire_time(kind, fields, label)
+            if fire:
+                kw = "Check-in" if "check-in" in low else "Remind"
+                text = f"{text.split(' ', 1)[0]} {kw} {fire.strftime('%b %d, %I:%M %p')}"
+        row.append({"text": text, "callback_data": f"snap:{item_id}:{i}"})
         if len(row) == 2:
             rows.append(row)
             row = []
@@ -102,10 +128,7 @@ async def send_recall(item_id: int, chat_id: str) -> str:
     if note:
         caption += f"\n{note}"
     keyboard = {"inline_keyboard": _buttons(item_id, item["kind"], fields)}
-    _sent_auth[item_id] = (chat_id, datetime.now())
-    # prune stale auth entries
-    for k in [k for k, (_, t) in _sent_auth.items() if datetime.now() - t > AUTH_TTL]:
-        _sent_auth.pop(k, None)
+    store.kb_register(item_id, chat_id)
     if img and os.path.exists(img):
         resp = await _api_async("sendPhoto", {
             "chat_id": chat_id, "caption": caption[:1000],
@@ -265,6 +288,18 @@ def _calendar_payload(kind: str, fields: dict) -> tuple[str, str, str] | None:
 
 # ---------------------------------------------------------------- auto-capture
 
+DESKTOP_CAPTURE_PROMPT = (
+    "The user sent an image with no text on a desktop/CLI surface (no Telegram chat). "
+    "Look at it: if it is snappable — a booking, reservation, bill, ticket, shipment, "
+    "subscription, payment or dated promo — run the snap-action workflow: classify the "
+    "kind, extract the fields, snap_save it with image_path set, then snap_keyboard "
+    "(it will no-op without a Telegram chat — ignore that). Reply ONE short line "
+    "confirming what was saved plus: 'say \"delete snap <id>\" to remove'. "
+    "If it is NOT snappable (photo, meme, screenshot of code, whiteboard), do NOT save — "
+    "reply with a one-line description of the image instead."
+)
+
+
 async def handle_photo(event, source, image_paths, submit) -> None:
     """Gateway photo hook: offer a code-side 'Save to snaps?' keyboard for bare images.
     Zero LLM — the classification turn only runs if the user taps Save."""
@@ -272,6 +307,13 @@ async def handle_photo(event, source, image_paths, submit) -> None:
         return  # multi-image dumps: skip, the user is probably just sharing
     chat_id = getattr(source, "chat_id", None)
     if not chat_id:
+        # Non-Telegram surface (desktop/CLI): no inline keyboards, so no tap-offer.
+        # Fire the classification turn directly with a snappability check — the agent
+        # saves only real documents and its one-line reply is the visible offer.
+        try:
+            submit(DESKTOP_CAPTURE_PROMPT)
+        except Exception:
+            pass
         return
     n = uuid.uuid4().hex[:8]
     now = datetime.now()
@@ -344,8 +386,7 @@ async def handle_callback(query, data: str, chat_id: str | None) -> None:
             await _toast_edit(query, "❌ Bad button data.")
             return
         item_id, idx = int(parts[1]), int(parts[2])
-        auth = _sent_auth.get(item_id)
-        if not auth or auth[0] != chat_id or datetime.now() - auth[1] > AUTH_TTL:
+        if not store.kb_check(item_id, chat_id, ttl_hours=AUTH_TTL.total_seconds() / 3600):
             await _toast_edit(query, "🔒 This keyboard has expired — run /snaps recall again.")
             return
         r = store.get(item_id)
@@ -363,7 +404,7 @@ async def handle_callback(query, data: str, chat_id: str | None) -> None:
         low = label.lower()
         if low == "delete":
             store.delete(item_id)
-            _sent_auth.pop(item_id, None)
+            store.kb_drop(item_id)
             await _edit(query, f"🗑 Snap {item_id} deleted.")
             return
         if "calendar" in low:

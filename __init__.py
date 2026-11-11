@@ -162,12 +162,23 @@ def _snap_command(raw_args: str, **kwargs):
                     return reply if reply else "✓"  # gateway treats empty as unhandled
                 except Exception as e:
                     return f"❌ recall failed: {e}"
-            # Fallback (CLI/desktop or no chat): '@@agent:' sentinel — gateway forwards
-            # to the agent turn for the rich recall (image, summary, clarify buttons).
-            return ("@@agent:The user typed /snaps recall " + str(item_id) + ". "
-                    "Run the snap-action rich recall flow for item " + str(item_id) + ": "
-                    "snap_get it, resend the stored image (fields._image) if present, "
-                    "show the one-line summary, then offer its kind's actions plus Delete via clarify.")
+            # Fallback (CLI/desktop or no chat): text render — no callback buttons here,
+            # so show the summary and the action names; the user replies with one.
+            r = store.get(int(item_id))
+            if not r.get("ok"):
+                return f"❌ {r.get('error', 'not found')}"
+            item = r["item"]
+            lines = [f"**Snap {item_id}** — {item['summary']}"]
+            if item.get("note"):
+                lines.append(f"   {item['note']}")
+            acts = store.actions_for(item["kind"], item["fields"])
+            if acts:
+                lines.append("")
+                lines.append("Actions (reply with one, e.g. *" + acts[0]["label"] + "*):")
+                for i, a in enumerate(acts, 1):
+                    lines.append(f"  {i}. {a['label']}")
+            lines.append("  • Delete")
+            return "\n".join(lines)
 
         if arg.startswith("id "):
             item_id = _int({"id": arg.split()[1]})
@@ -218,7 +229,9 @@ def snap_keyboard(args: dict, **kwargs) -> str:
     src = kwargs.get("source")
     chat_id = getattr(src, "chat_id", None) if src is not None else None
     if not chat_id:
-        return "❌ snap_keyboard needs a Telegram chat (no chat in this session)"
+        # Desktop/CLI: no Telegram chat to send a keyboard to — the text reply the
+        # agent produces already carries the summary and actions. Not an error.
+        return "ok (no Telegram chat here — actions are shown in the text reply)"
     try:
         from . import fastpath
         return fastpath.fastpath_sync_recall(int(item_id), str(chat_id))
