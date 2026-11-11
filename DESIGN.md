@@ -75,6 +75,25 @@ updates/removals):
 Bill splits settle via `snap_update(settle="name")`; open splits surface in
 `snap_stats` and a later `payment` screenshot offers to settle them.
 
+## Callback fast path (code-side actions)
+
+`register_callback_handler("snap", …)` in fastpath.py: `/snaps recall N` on
+Telegram sends the image + inline keyboard straight over the Bot API (no agent
+turn); taps with callback_data `snap:<id>:<idx>` route through the gateway's
+plugin-callback registry and execute in code — Delete (store.delete), Add to
+calendar (.ics sendDocument + Google TEMPLATE link), reminders (one-shot cron
+via the cronjob tool), Just save it (toast). Chat authorization: the keyboard
+records the sending chat; taps from any other chat (or after 24h) are refused.
+Labels stay deterministic via timing.py. All actions execute in code: reminders
+map each label to a fire time (1h/24h before, 3d before renewal, 30d before
+warranty end, morning-of, evening-before, 2d before due date, delivery day,
+next-day follow-up) and create a one-shot cron (IST); payments settle the
+unambiguous open bill split (amount+currency match, else agent); bills log with
+a month total; 'Split this bill' and multi-commitment tasks stay agent-deferred.
+The agent flow remains the fallback for description-based recalls and
+non-Telegram surfaces. All stored times are IST; timing.py compares in IST even
+when the host clock is UTC.
+
 ## Calendar support
 
 Travel and event kinds expose an "Add to calendar" action that produces two

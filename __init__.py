@@ -151,8 +151,18 @@ def _snap_command(raw_args: str, **kwargs):
             item_id = _int({"id": arg.split()[1]})
             if item_id is None:
                 return "❌ usage: /snaps recall <number>"
-            # '@@agent:' sentinel (core patch): gateway forwards this to the agent turn,
-            # which runs the rich recall — stored image, summary, buttons (actions + Delete).
+            # Fast path: code-side recall — photo + inline keyboard via the Bot API,
+            # actions execute on tap without an agent turn.
+            src = kwargs.get("source")
+            if src is not None and getattr(getattr(src, "platform", None), "value", None) == "telegram" \
+                    and getattr(src, "chat_id", None):
+                try:
+                    from . import fastpath
+                    return fastpath.fastpath_sync_recall(int(item_id), str(src.chat_id))
+                except Exception as e:
+                    return f"❌ recall failed: {e}"
+            # Fallback (CLI/desktop or no chat): '@@agent:' sentinel — gateway forwards
+            # to the agent turn for the rich recall (image, summary, clarify buttons).
             return ("@@agent:The user typed /snaps recall " + str(item_id) + ". "
                     "Run the snap-action rich recall flow for item " + str(item_id) + ": "
                     "snap_get it, resend the stored image (fields._image) if present, "
@@ -216,12 +226,19 @@ def register(ctx):
     # NOTE: '/snap' is a built-in Hermes command (screenshot) — plugin commands
     # with that name are rejected at registration. The ledger command is /snaps.
     ctx.register_command(name="snaps", handler=_snap_command,
-                         description="snap-action ledger: /snaps [stats | kind | id N]",
-                         args_hint="[stats|kind|id N]")
+                         description="snap-action ledger: /snaps [stats | kind | id N | recall N]",
+                         args_hint="[stats|kind|id N|recall N]")
+    try:
+        from .fastpath import handle_callback
+        reg = ctx.register_callback_handler("snap", handle_callback)
+        if reg is None:
+            reg = None  # registration failed; recall falls back to the agent flow
+    except Exception:
+        pass
 
     skill_path = Path(__file__).parent / "skills" / "workflow" / "SKILL.md"
     if skill_path.exists():
         ctx.register_skill(name="workflow", path=skill_path,
                            description="Screenshot-to-action workflow: classify an incoming image, extract fields, save, and offer numbered quick actions")
 
-    logger.info("snap-action registered: 6 tools, /snaps command, workflow skill")
+    logger.info("snap-action registered: 6 tools, /snaps command, snap: callbacks, workflow skill")

@@ -41,6 +41,12 @@ An image (screenshot or photo) arrives in chat with no explicit instruction, OR 
 When the user asks to recall / reopen an item — by id, by description ("the
 Jaipur flight"), or via the literal message "/snaps recall N" (the gateway
 forwards that command text to you):
+
+**Fast path (Telegram):** `/snaps recall N` is handled entirely in code — the
+gateway sends the stored image with tappable buttons, and taps execute directly
+(Delete, calendar .ics + Google link, reminders via cron). No agent turn; you
+will not be involved. Use the agent flow only when the fast path is unavailable
+(CLI/desktop) or the user asks by description rather than id:
 1. `snap_get` the item. If its fields contain `_image`, resend that file as an
    attachment (e.g. MEDIA: <path>) **as a standalone message** — never in the
    same message as the buttons/clarify, or Telegram drops it. Wait for it to
