@@ -21,11 +21,7 @@ You:  (taps calendar)
 Bot:  📅 Calendar entry sent — snap-7.ics attached + one-tap Google Calendar link
 ```
 
-Every action button carries the exact time it will fire:
-
-| | |
-|---|---|
-| ![Steam sale](docs/screenshots/sale.jpg) | ![Delivery](docs/screenshots/delivery.jpg) |
+**Time-aware actions** — every button carries the exact time it will fire:
 
 - `⏰ Check-in Nov 18, 09:50 AM` — web check-in opens 24 h before departure
 - `🌅 Remind Nov 13, 09:00 AM` / `🌙 Remind Nov 12, 07:00 PM` — morning-of and evening-before, IST-correct
