@@ -4,11 +4,13 @@
 
 ## Screenshots → actions
 
-| Telegram — travel | Telegram — dinner reservation |
-|---|---|
-| ![Travel booking keyboard](docs/screenshots/travel-keyboard.jpg) | ![Dinner reservation keyboard](docs/screenshots/dinner-keyboard.jpg) |
-| **Telegram — freeform promo** | **Desktop — same flow, no Telegram needed** |
-| ![Freeform sale keyboard](docs/screenshots/sale-keyboard.jpg) | ![Desktop capture](docs/screenshots/desktop-capture.png) |
+| Telegram — travel | Telegram — dinner reservation | Telegram — freeform promo |
+|---|---|---|
+| ![Travel booking keyboard](docs/screenshots/travel-keyboard.jpg) | ![Dinner reservation keyboard](docs/screenshots/dinner-keyboard.jpg) | ![Freeform sale keyboard](docs/screenshots/sale-keyboard.jpg) |
+
+**Desktop — the same flow, no Telegram needed:**
+
+![Desktop capture](docs/screenshots/desktop-capture.png)
 
 ```text
 You:  [screenshot of flight e-ticket — no caption]
@@ -48,7 +50,7 @@ Actions are **timing-aware**: an event tonight shows a "1 hour before" option; n
 ## Install
 
 ```bash
-hermes plugins install s2n/snap-action
+hermes plugins install nini1294/snap-action
 hermes plugins enable snap-action
 ```
 

@@ -28,15 +28,14 @@ _pending_saves: dict[str, tuple[str, str, "object", datetime]] = {}  # snapnew:<
 # ---------------------------------------------------------------- Bot API
 
 def _token() -> str:
+    # Rule 11: credentials via Hermes routes / process env only — never read .env files.
+    # Hermes itself loads TELEGRAM_BOT_TOKEN into the gateway process environment.
     tok = os.getenv("TELEGRAM_BOT_TOKEN")
-    if tok:
-        return tok
-    env = os.path.expanduser("~/.hermes/.env")
-    with open(env, "r") as f:
-        for line in f:
-            if line.startswith("TELEGRAM_BOT_TOKEN="):
-                return line.split("=", 1)[1].strip()
-    raise RuntimeError("TELEGRAM_BOT_TOKEN not found")
+    if not tok:
+        raise RuntimeError(
+            "TELEGRAM_BOT_TOKEN not set — keyboards need the Telegram platform token "
+            "(declare it in requires_env; /snaps text recall works without it)")
+    return tok
 
 
 def _api(method: str, fields: dict, file_field: str | None = None,
